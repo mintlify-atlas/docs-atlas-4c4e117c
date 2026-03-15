@@ -1,0 +1,191 @@
+---
+title: "Easter egg"
+description: "A hidden celebration triggered by typing 3.14159 anywhere on the page — confetti, sound effects, and an alert dialog."
+---
+
+`EasterEgg` is an invisible React component mounted at the application root. It listens to the keyboard globally and fires a celebration sequence when the user types the first six significant digits of π.
+
+<Tip>
+  To trigger the easter egg, simply type **3.14159** anywhere on the page (no input field required). Within seconds, confetti will burst from both sides of the screen.
+</Tip>
+
+## How it works
+
+<Steps>
+  <Step title="Global keydown listener">
+    On mount, the component attaches a `keydown` listener to `window`. It only pays attention to numeric characters and the decimal point — any other key is ignored immediately:
+
+    ```tsx
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!/^[0-9.]$/.test(e.key)) return;
+      // ...
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    ```
+  </Step>
+
+  <Step title="Rolling buffer">
+    Accepted keystrokes are appended to a rolling string buffer that always keeps only the last `TARGET.length` characters (7 characters for `"3.14159"`). This means the user can type freely — the sequence is matched anywhere in the stream:
+
+    ```tsx
+    const TARGET = "3.14159";
+
+    setKeys((prev) => {
+      const next = (prev + e.key).slice(-TARGET.length);
+      if (next === TARGET) {
+        triggerCelebration();
+      }
+      return next;
+    });
+    ```
+  </Step>
+
+  <Step title="Celebration fires">
+    When the buffer exactly equals `"3.14159"`, `triggerCelebration()` is called. The listener stays active so the easter egg can be re-triggered.
+  </Step>
+
+  <Step title="Cleanup on unmount">
+    The `useEffect` returns a cleanup function that removes the listener when the component unmounts, preventing memory leaks:
+
+    ```tsx
+    return () => window.removeEventListener("keydown", handleKeyDown);
+    ```
+  </Step>
+</Steps>
+
+## Celebration effects
+
+When the sequence is detected, three things happen simultaneously:
+
+<CardGroup cols={2}>
+  <Card title="Sound effect" icon="musical-note">
+    `playSuccessSound()` from `src/lib/audio.ts` plays two ascending sine tones via the Web Audio API: 880 Hz immediately, then 1760 Hz after 100 ms.
+  </Card>
+  <Card title="Dual confetti burst" icon="sparkles">
+    `canvas-confetti` fires two streams for 3 seconds — one from the left edge at 60° and one from the right edge at 120°, using the app's neon color palette.
+  </Card>
+  <Card title="Alert dialog" icon="bell-alert">
+    A browser `alert()` displays the message: *"¡Encontraste el Pi Moment! 🎉 Has tecleado 3.14159 y desbloqueado este secreto."*
+  </Card>
+  <Card title="Invisible mount" icon="eye-slash">
+    The component returns `null`, so it has no visual presence in the DOM outside of the effects it triggers.
+  </Card>
+</CardGroup>
+
+### Confetti implementation
+
+The confetti loop uses `requestAnimationFrame` to sustain the burst for exactly 3 seconds:
+
+```tsx
+const triggerCelebration = () => {
+  playSuccessSound();
+
+  const end = Date.now() + 3 * 1000;
+  const colors = ['#00D4FF', '#B026FF', '#ffffff'];
+
+  (function frame() {
+    confetti({
+      particleCount: 5,
+      angle: 60,
+      spread: 55,
+      origin: { x: 0 },
+      colors: colors
+    });
+    confetti({
+      particleCount: 5,
+      angle: 120,
+      spread: 55,
+      origin: { x: 1 },
+      colors: colors
+    });
+
+    if (Date.now() < end) {
+      requestAnimationFrame(frame);
+    }
+  }());
+
+  alert("¡Encontraste el Pi Moment! 🎉 \n\nHas tecleado 3.14159 y desbloqueado este secreto.");
+};
+```
+
+The three confetti colors (`#00D4FF`, `#B026FF`, `#ffffff`) match the app's primary (neon blue), secondary (neon purple), and white theme tokens.
+
+### Audio implementation
+
+`playSuccessSound` is a thin wrapper in `src/lib/audio.ts` around the Web Audio API. It lazily creates a shared `AudioContext` and plays two oscillators in sequence:
+
+```typescript
+export const playSuccessSound = () => {
+  playTone(880, 'sine', 0.1, 0.1);
+  setTimeout(() => playTone(1760, 'sine', 0.2, 0.1), 100);
+};
+```
+
+<Note>
+  Because browsers require a user gesture before audio can play, the `AudioContext` is initialized on the first interaction. The `initAudio` helper handles the `suspended` state by calling `audioCtx.resume()` automatically.
+</Note>
+
+## Full component source
+
+```tsx
+import { useEffect, useState } from "react";
+import confetti from "canvas-confetti";
+import { playSuccessSound } from "@/lib/audio";
+
+export function EasterEgg() {
+  const [keys, setKeys] = useState<string>("");
+  const TARGET = "3.14159";
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only track numbers and dots
+      if (!/^[0-9.]$/.test(e.key)) return;
+
+      setKeys((prev) => {
+        const next = (prev + e.key).slice(-TARGET.length);
+        if (next === TARGET) {
+          triggerCelebration();
+        }
+        return next;
+      });
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const triggerCelebration = () => {
+    playSuccessSound();
+
+    // Epic dual confetti burst
+    const end = Date.now() + 3 * 1000;
+    const colors = ['#00D4FF', '#B026FF', '#ffffff'];
+
+    (function frame() {
+      confetti({
+        particleCount: 5,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors: colors
+      });
+      confetti({
+        particleCount: 5,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors: colors
+      });
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    }());
+
+    alert("¡Encontraste el Pi Moment! 🎉 \n\nHas tecleado 3.14159 y desbloqueado este secreto.");
+  };
+
+  return null; // Invisible component
+}
+```

@@ -1,0 +1,118 @@
+---
+title: "PiBot chatbot"
+description: "A floating client-side chatbot that answers preset questions about π with hardcoded responses, typing animation, and audio beeps."
+---
+
+PiBot is a floating chat widget rendered at the root level of the app, always on top of all page sections. It is a demo assistant — there is no backend or AI model involved. All responses are hardcoded strings matched by simple keyword lookup.
+
+<Note>
+  PiBot runs entirely client-side. Responses are hardcoded in `src/components/PiBot.tsx`. No API calls are made.
+</Note>
+
+## Floating action button
+
+A circular button is fixed to the bottom-right corner of the viewport (`bottom-6 right-6`, `z-50`). It uses a diagonal gradient from the app's primary cyan to its accent pink:
+
+```tsx
+<motion.button
+  className="fixed bottom-6 right-6 z-50 w-16 h-16 rounded-full
+             bg-gradient-to-r from-primary to-accent text-white
+             shadow-[0_0_20px_hsla(var(--primary)/0.5)]"
+  whileHover={{ rotate: 15 }}
+  whileTap={{ scale: 0.9 }}
+  onClick={() => setIsOpen(true)}
+>
+  <MessageCircle size={28} />
+</motion.button>
+```
+
+Hovering tilts the button 15° and tapping briefly shrinks it to 90% scale for tactile feedback.
+
+## Chat window
+
+Clicking the button opens a `350 × 500 px` panel (capped at `calc(100vw - 3rem)` / `70vh` on small screens) anchored above the button at `bottom-28 right-6`. It slides in and out with a spring scale animation via `AnimatePresence`.
+
+The window has three zones:
+
+1. **Header** — PiBot avatar icon, title, and a close (×) button.
+2. **Messages area** — scrollable list of user and bot bubbles. Bot messages are left-aligned with a rounded-top-left corner removed; user messages are right-aligned with the rounded-top-right corner removed.
+3. **Input area** — horizontally scrollable preset question pills + a free-text input with a send button.
+
+## Preset questions
+
+Four preset question buttons appear as pill-shaped chips above the text input. Clicking any of them immediately sends the question as a user message:
+
+| Button label | |
+|---|---|
+| ¿Qué es π? | |
+| ¿Por qué es infinito? | |
+| ¿Quién descubrió π? | |
+| ¿Para qué sirve? | |
+
+## Responses
+
+<AccordionGroup>
+  <Accordion title="¿Qué es π?">
+    Pi (π) es la relación geométrica entre la circunferencia de un círculo y su diámetro. Equivale aproximadamente a 3.14159, y es una constante en todos los círculos del universo.
+  </Accordion>
+  <Accordion title="¿Por qué es infinito?">
+    Pi es un número irracional. Esto significa matemáticamente que no puede escribirse como una fracción simple, por lo que su representación decimal nunca termina y nunca entra en un patrón repetitivo.
+  </Accordion>
+  <Accordion title="¿Quién descubrió π?">
+    Nadie lo 'descubrió' de un solo golpe. Antiguos babilonios y egipcios tenían aproximaciones hace 4000 años. Arquímedes en Grecia hizo el primer cálculo riguroso. El símbolo 'π' fue popularizado por Euler en 1737.
+  </Accordion>
+  <Accordion title="¿Para qué sirve?">
+    Se usa en todo lo que involucre círculos, curvas u ondas. GPS, construcción de edificios, misiones espaciales de la NASA, procesamiento de señales (tu wifi) y modelos climáticos.
+  </Accordion>
+  <Accordion title="Any other question (default)">
+    Esa es una pregunta fascinante. Aunque soy un bot simple para este Día de Pi, te animo a seguir explorando las maravillas de las matemáticas. ¡Intenta jugar al Desafío de Memoria!
+  </Accordion>
+</AccordionGroup>
+
+Response matching is case-insensitive and uses a `String.prototype.includes` check after stripping `¿` and `?` from the key:
+
+```typescript
+for (const key in RESPONSES) {
+  if (lowerText.includes(key.replace("¿", "").replace("?", ""))) {
+    responseText = RESPONSES[key];
+    break;
+  }
+}
+```
+
+If no key matches, the default response is returned.
+
+## Typing animation
+
+When a message is sent, PiBot shows a three-dot bouncing indicator and plays exactly 3 beeps before the response appears:
+
+<Steps>
+  <Step title="User message sent">
+    The user message is appended to the messages list and `isTyping` is set to `true`. The input is cleared.
+  </Step>
+  <Step title="Three audio beeps">
+    `playTypingBeep()` fires three times at 200 ms intervals — a short square-wave burst at a randomized frequency between 600 and 800 Hz each time.
+  </Step>
+  <Step title="Response appears after 1.5 s">
+    After a fixed 1,500 ms delay, `isTyping` is set to `false` and the bot response message is appended to the list.
+  </Step>
+</Steps>
+
+```typescript
+let beepCount = 0;
+const beepInterval = setInterval(() => {
+  if (beepCount < 3) {
+    playTypingBeep();
+    beepCount++;
+  } else {
+    clearInterval(beepInterval);
+  }
+}, 200);
+
+setTimeout(() => {
+  setMessages(prev => [...prev, { id: Date.now() + 1, text: responseText, sender: 'bot' }]);
+  setIsTyping(false);
+}, 1500);
+```
+
+The greeting message shown when the chat first opens is: *"¡Hola! Soy PiBot. ¿Qué te gustaría saber sobre el número más famoso del mundo?"*

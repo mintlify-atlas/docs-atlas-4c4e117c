@@ -1,0 +1,84 @@
+---
+title: "Introduction"
+description: "An interactive educational React SPA celebrating Pi Day with visualizations, a memory game, historical timeline, and PiBot chatbot."
+---
+
+# EduLearn-Hub Pi Day
+
+EduLearn-Hub Pi Day is a full-stack educational web application that celebrates Pi Day (March 14) through immersive, interactive experiences. Built with React, TypeScript, and a futuristic dark aesthetic, it makes learning about π engaging for everyone.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get the project running locally in minutes
+  </Card>
+  <Card title="Pi Day App" icon="pi" href="/pi-day/overview">
+    Explore the interactive features of the app
+  </Card>
+  <Card title="API & Backend" icon="server" href="/api/overview">
+    Express API server, database, and code generation
+  </Card>
+  <Card title="Development Guide" icon="code" href="/development/local-setup">
+    Set up your development environment and contribute
+  </Card>
+</CardGroup>
+
+## What is EduLearn-Hub Pi Day?
+
+Pi Day is an annual celebration on March 14 (3/14), matching the first three digits of π = 3.14159... This project turns that celebration into a rich learning experience with:
+
+<CardGroup cols={2}>
+  <Card title="Interactive Visualizations" icon="chart-scatter">
+    Color-coded grid and sphere view of the first 1,000 digits of π
+  </Card>
+  <Card title="Memory Game" icon="gamepad">
+    Three game modes: Normal (50 digits), Time Attack (30 seconds), and Sudden Death
+  </Card>
+  <Card title="Historical Timeline" icon="timeline">
+    Animated scroll-driven timeline from 2000 BC to modern supercomputers
+  </Card>
+  <Card title="PiBot Chatbot" icon="robot">
+    Floating chat assistant that answers questions about π
+  </Card>
+  <Card title="Data Gallery" icon="eye">
+    Visual art gallery rendering 1,000 digits as a color matrix or sphere
+  </Card>
+  <Card title="Easter Egg" icon="egg">
+    Type `3.14159` anywhere on the page to trigger a surprise
+  </Card>
+</CardGroup>
+
+## Tech stack
+
+The project is a **pnpm monorepo** combining a React frontend with an Express backend:
+
+| Layer | Technology |
+|---|---|
+| Frontend framework | React 18 + TypeScript |
+| Routing | Wouter |
+| Animations | Framer Motion |
+| UI components | Radix UI + Tailwind CSS |
+| Build tool | Vite |
+| API server | Express 5 |
+| Database | PostgreSQL + Drizzle ORM |
+| Validation | Zod v4 |
+| API spec | OpenAPI 3.1 + Orval codegen |
+| Monorepo | pnpm workspaces |
+
+## Repository structure
+
+```
+EduLearn-Hub/
+├── artifacts/
+│   ├── api-server/        # Express 5 API server
+│   └── pi-day/            # React SPA (the main Pi Day app)
+├── lib/
+│   ├── api-spec/          # OpenAPI spec + Orval codegen config
+│   ├── api-client-react/  # Generated React Query hooks
+│   ├── api-zod/           # Generated Zod schemas
+│   └── db/                # Drizzle ORM schema + DB connection
+└── scripts/               # Utility TypeScript scripts
+```
+
+<Note>
+  The Pi Day frontend (`artifacts/pi-day`) is a self-contained React SPA that currently runs independently of the backend. The API server provides a foundation for future backend-connected features.
+</Note>

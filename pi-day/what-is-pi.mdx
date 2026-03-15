@@ -1,0 +1,94 @@
+---
+title: "What is Pi section"
+description: "Interactive circle visualizer that derives π from circumference and diameter in real time, alongside three info cards explaining its mathematical properties."
+---
+
+The **What Is Pi** section (`id="what-is-pi"`) gives visitors a hands-on way to discover why π equals approximately 3.14159 — not as a memorized fact, but as a measurable ratio.
+
+## Interactive circle visualizer
+
+The left panel contains a live circle that the user controls with a range slider. Dragging the slider changes the radius from 10 to 100 units. The circle's border and a diameter line both animate to match the new size using Framer Motion springs.
+
+Below the circle, a monospace readout shows the math updating in real time:
+
+```
+Circunferencia = 314.16
+314.16 / 200 = 1.57080...
+```
+
+The relationship displayed is:
+
+```
+C = 2πr
+C / d = π
+```
+
+Where `d = 2r` (diameter). No matter what radius value the slider is set to, the ratio of circumference to diameter always converges on the same value — π.
+
+### Component logic
+
+```tsx
+export function WhatIsPi() {
+  const [radius, setRadius] = useState(50);
+  const maxRadius = 100;
+
+  const diameter = radius * 2;
+  const circumference = (2 * Math.PI * radius).toFixed(2);
+
+  // ...
+
+  <input
+    type="range"
+    min="10"
+    max="100"
+    value={radius}
+    onChange={(e) => setRadius(Number(e.target.value))}
+  />
+
+  <div className="font-mono text-center">
+    <div>Circunferencia = <span>{circumference}</span></div>
+    <div>{circumference} / {diameter} = <span>{(parseFloat(circumference) / diameter).toFixed(5)}...</span></div>
+  </div>
+}
+```
+
+The animated circle and diameter line both use `transition: { type: "spring", stiffness: 300, damping: 30 }` so the resizing feels physically responsive.
+
+## Property cards
+
+The right column contains three `InfoCard` components that explain what makes π mathematically special:
+
+<CardGroup cols={1}>
+  <Card title="Es Irracional" icon="infinity">
+    No puede expresarse como una fracción exacta (como a/b). Sus decimales continúan para siempre sin repetirse en un patrón.
+  </Card>
+  <Card title="Es Trascendente" icon="sparkles">
+    No es raíz de ninguna ecuación algebraica con coeficientes racionales. Esto significa que es imposible "cuadrar el círculo" con regla y compás.
+  </Card>
+  <Card title="Es Universal" icon="globe">
+    Aparece en fórmulas de la física cuántica, el electromagnetismo, la cosmología e incluso en la probabilidad de que una aguja cruce una línea.
+  </Card>
+</CardGroup>
+
+Each card uses `whileHover={{ scale: 1.02, x: 10 }}` from Framer Motion for a subtle push effect when the user hovers over it.
+
+### InfoCard component
+
+```tsx
+function InfoCard({ title, desc, icon }: { title: string; desc: string; icon: string }) {
+  return (
+    <motion.div
+      whileHover={{ scale: 1.02, x: 10 }}
+      className="glass-panel p-6 rounded-2xl flex gap-4 items-start"
+    >
+      <div className="text-4xl bg-white/5 w-16 h-16 flex items-center justify-center rounded-xl border border-white/10 flex-shrink-0">
+        {icon}
+      </div>
+      <div>
+        <h3 className="text-xl font-bold text-foreground mb-2">{title}</h3>
+        <p className="text-muted-foreground leading-relaxed">{desc}</p>
+      </div>
+    </motion.div>
+  );
+}
+```

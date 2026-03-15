@@ -1,0 +1,100 @@
+---
+title: "TypeScript configuration"
+description: "How composite project references work in this monorepo and how to keep them correctly configured."
+---
+
+## Overview
+
+The monorepo uses TypeScript [composite project references](https://www.typescriptlang.org/docs/handbook/project-references.html) so that `tsc` understands the dependency graph between packages and can build (or skip) them in the right order.
+
+## tsconfig.base.json
+
+All packages extend `tsconfig.base.json` from the repository root. Key settings:
+
+```json
+// tsconfig.base.json
+{
+  "compilerOptions": {
+    "isolatedModules": true,
+    "lib": ["es2022"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "es2022",
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "strictNullChecks": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitReturns": true,
+    "noEmitOnError": true,
+    "alwaysStrict": true,
+    "skipLibCheck": true,
+    "customConditions": ["workspace"]
+  }
+}
+```
+
+<Note>
+  `composite: true` is **not** set in `tsconfig.base.json` itself — it is set per-package in each package's own `tsconfig.json` when the package is part of the project-reference graph. The root `tsconfig.json` uses `references` to declare the dependency graph for `lib/*` packages.
+</Note>
+
+## Root tsconfig.json
+
+The root `tsconfig.json` lists all shared library packages as project references. This file is what `pnpm run typecheck:libs` (and therefore `pnpm run typecheck`) uses:
+
+```json
+// tsconfig.json (root)
+{
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
+  "references": [
+    { "path": "./lib/db" },
+    { "path": "./lib/api-client-react" },
+    { "path": "./lib/api-zod" }
+  ]
+}
+```
+
+## emitDeclarationOnly
+
+When running `pnpm run typecheck`, the flag `--emitDeclarationOnly` is passed to `tsc --build`. This means:
+
+- TypeScript only writes `.d.ts` declaration files — no `.js` output.
+- Actual JavaScript bundling is handled by **esbuild** (for `@workspace/api-server`) and **Vite** (for `@workspace/pi-day`), not by `tsc`.
+- The `.d.ts` files written during typecheck are what cross-package imports resolve against at type-check time.
+
+## Always typecheck from the root
+
+<Warning>
+  Do **not** run `tsc` or `tsc --noEmit` inside a single package directory unless you are only checking that package in isolation for quick feedback. Running `tsc` inside a package that depends on other workspace packages will fail with "cannot find module" errors if those packages haven't had their `.d.ts` files emitted yet.
+
+  Always run from the repository root:
+
+  ```bash
+  pnpm run typecheck
+  ```
+
+  This uses `tsc --build` which resolves the full dependency graph and builds packages in the correct order.
+</Warning>
+
+## Adding a new package to project references
+
+When you create a new package under `lib/` that other packages will import, you must:
+
+1. Add `"composite": true` to the package's `tsconfig.json` under `compilerOptions`.
+2. Add a `"declarationDir"` (or `"outDir"`) so `tsc` knows where to place the `.d.ts` files.
+3. Add a `references` entry for any workspace packages it imports.
+4. Register the new package in the **root** `tsconfig.json`:
+
+```json
+// tsconfig.json (root) — add your new package
+"references": [
+  { "path": "./lib/db" },
+  { "path": "./lib/api-client-react" },
+  { "path": "./lib/api-zod" },
+  { "path": "./lib/my-new-package" }  // <-- add this
+]
+```
+
+5. Run `pnpm run typecheck` from the root to verify the full graph builds cleanly.

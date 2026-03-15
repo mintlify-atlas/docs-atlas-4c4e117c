@@ -1,0 +1,133 @@
+---
+title: "Monorepo structure"
+description: "How the pnpm workspace is organized and how packages depend on each other."
+---
+
+## Overview
+
+The repository is a **pnpm workspaces** monorepo. All packages share a single `node_modules` at the root, and pnpm's workspace protocol (`workspace:*`) wires local packages together without publishing to a registry.
+
+```text
+artifacts-monorepo/
+├── artifacts/                  # Deployable applications
+│   ├── api-server/             # @workspace/api-server — Express 5 API
+│   └── pi-day/                 # @workspace/pi-day — React SPA
+├── lib/                        # Shared libraries
+│   ├── api-spec/               # @workspace/api-spec — OpenAPI spec + Orval config
+│   ├── api-client-react/       # @workspace/api-client-react — generated React Query hooks
+│   ├── api-zod/                # @workspace/api-zod — generated Zod schemas
+│   └── db/                     # @workspace/db — Drizzle ORM + PostgreSQL
+├── scripts/                    # @workspace/scripts — utility TypeScript scripts
+├── pnpm-workspace.yaml         # workspace glob patterns + shared catalog
+├── tsconfig.base.json          # shared TypeScript compiler options
+├── tsconfig.json               # root project references (libs only)
+└── package.json                # root devDeps: typescript, prettier
+```
+
+---
+
+## Workspace configuration
+
+`pnpm-workspace.yaml` declares four glob patterns that determine which directories are workspace packages:
+
+```yaml
+packages:
+  - artifacts/*
+  - lib/*
+  - lib/integrations/*
+  - scripts
+```
+
+The file also defines a **catalog** — a shared version registry for frequently used packages (React, TanStack Query, Vite, Tailwind CSS, Zod, and more). Individual `package.json` files reference catalog entries with `catalog:` instead of a version string, keeping version pinning centralized.
+
+---
+
+## Package roles
+
+<CardGroup cols={2}>
+  <Card title="@workspace/pi-day" icon="browser">
+    React 19 SPA built with Vite. Renders the Pi Day experience in the browser. Depends on `@workspace/api-client-react` for typed data fetching.
+  </Card>
+  <Card title="@workspace/api-server" icon="server">
+    Express 5 HTTP server. Mounts routes under `/api`, validates requests and responses with `@workspace/api-zod`, and persists data via `@workspace/db`.
+  </Card>
+  <Card title="@workspace/db" icon="database">
+    Drizzle ORM layer over PostgreSQL. Exports a `db` client instance, a `pg` connection pool, and schema models. Requires `DATABASE_URL` at runtime.
+  </Card>
+  <Card title="@workspace/api-spec" icon="file-code">
+    Owns `openapi.yaml` (OpenAPI 3.1) and the Orval codegen config. Running `codegen` writes generated output into `api-client-react` and `api-zod`.
+  </Card>
+  <Card title="@workspace/api-client-react" icon="code">
+    Auto-generated React Query hooks and a custom fetch client. Produced by Orval from `openapi.yaml`. Consumed exclusively by `@workspace/pi-day`.
+  </Card>
+  <Card title="@workspace/api-zod" icon="shield-check">
+    Auto-generated Zod schemas for every OpenAPI component. Produced by Orval from `openapi.yaml`. Consumed exclusively by `@workspace/api-server`.
+  </Card>
+</CardGroup>
+
+The `scripts` package is a catch-all for one-off TypeScript scripts. Each `.ts` file in `scripts/src/` has a corresponding npm script entry and can import any workspace package as a regular dependency.
+
+---
+
+## The `workspace:*` protocol
+
+When one package depends on another in the same repo, its `package.json` uses `workspace:*` as the version range:
+
+```json
+// artifacts/api-server/package.json
+{
+  "dependencies": {
+    "@workspace/db": "workspace:*",
+    "@workspace/api-zod": "workspace:*"
+  }
+}
+```
+
+```json
+// artifacts/pi-day/package.json
+{
+  "dependencies": {
+    "@workspace/api-client-react": "workspace:*"
+  }
+}
+```
+
+pnpm resolves `workspace:*` to the local package directory at install time. No symlink gymnastics or `npm link` required — pnpm handles this natively via its virtual store.
+
+---
+
+## Dependency graph
+
+The diagram below shows which packages consume which. Arrows point from consumer to dependency.
+
+```text
+@workspace/pi-day
+    └── @workspace/api-client-react   (generated React Query hooks)
+
+@workspace/api-server
+    ├── @workspace/db                 (Drizzle client + schema)
+    └── @workspace/api-zod            (Zod validation schemas)
+
+@workspace/api-spec  ──codegen──►  @workspace/api-client-react
+                     ──codegen──►  @workspace/api-zod
+
+@workspace/scripts
+    └── (any workspace package, added on demand)
+```
+
+`@workspace/api-spec` is not a runtime dependency of anything — it is a **code generation source**. Its output packages (`api-client-react` and `api-zod`) are the ones actually imported at runtime.
+
+---
+
+## Root scripts
+
+The root `package.json` provides two top-level commands:
+
+| Command | What it does |
+|---|---|
+| `pnpm run typecheck` | Runs `tsc --build --emitDeclarationOnly` for the `lib/` packages, then runs `typecheck` in each `artifacts/` package and `scripts` |
+| `pnpm run build` | Runs `typecheck` first, then recursively runs `build` in every package that defines it |
+
+<Note>
+  Always run `typecheck` and `build` from the repository root, not from inside individual packages. Cross-package TypeScript project references only resolve correctly when built through the root `tsconfig.json`.
+</Note>

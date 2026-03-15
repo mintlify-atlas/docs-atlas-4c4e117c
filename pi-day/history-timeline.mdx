@@ -1,0 +1,79 @@
+---
+title: "Historical timeline"
+description: "A scroll-animated vertical timeline tracing six key milestones in humanity's 4,000-year effort to calculate π, from Babylonian geometry to modern supercomputers."
+---
+
+The **History** section (`id="history"`) presents six milestones in the pursuit of π as a vertically scrolling timeline. Each card fades and slides in as it enters the viewport, and a glowing progress line grows down the center axis as the user scrolls through the section.
+
+## Scroll animation
+
+The progress line is driven by Framer Motion's `useScroll` and `useTransform` hooks attached to the section container:
+
+```tsx
+const containerRef = useRef<HTMLDivElement>(null);
+const { scrollYProgress } = useScroll({
+  target: containerRef,
+  offset: ["start end", "end start"]
+});
+
+const lineHeight = useTransform(scrollYProgress, [0.2, 0.8], ["0%", "100%"]);
+```
+
+The line begins growing when the section is 20% scrolled into view and reaches full height at 80% scroll progress. It uses a `background: linear-gradient(from-primary via-secondary to-accent)` — cyan → purple → pink — with a `box-shadow` glow in the primary color.
+
+## Timeline entries
+
+The six entries are defined in a static `TIMELINE` array:
+
+```tsx
+const TIMELINE = [
+  { year: "2000 a.C.", title: "Babilonios",                val: "3.125",       desc: "Aproximación basada en la geometría de polígonos inscritos." },
+  { year: "1650 a.C.", title: "Papiro de Rhind (Egipto)",  val: "3.1605",      desc: "El escriba Ahmes documentó el cálculo del área de un círculo." },
+  { year: "250 a.C.",  title: "Arquímedes",                val: "3.1418",      desc: "Usó polígonos de 96 lados para calcular límites precisos de Pi." },
+  { year: "480 d.C.",  title: "Zu Chongzhi",               val: "355/113",     desc: "Calculó Pi a 7 decimales exactos, récord que duró 800 años." },
+  { year: "1706",      title: "William Jones",             val: "π",           desc: "Fue el primero en usar el símbolo griego π (pi) para esta constante." },
+  { year: "Actualidad",title: "Supercomputadoras",         val: "105 Trillones",desc: "El récord actual de dígitos calculados, exigiendo petabytes de almacenamiento." }
+];
+```
+
+### Milestone details
+
+<AccordionGroup>
+  <Accordion title="2000 a.C. — Babilonios (3.125)">
+    The Babylonians derived an approximation for π using the geometry of inscribed polygons. Their value of 3.125 is off from the true value by less than 0.6%.
+  </Accordion>
+  <Accordion title="1650 a.C. — Papiro de Rhind, Egipto (3.1605)">
+    Scribe Ahmes documented a method for calculating the area of a circle in the Rhind Papyrus. His implicit value of π (≈ 3.1605) was derived from approximating a circle as an octagon.
+  </Accordion>
+  <Accordion title="250 a.C. — Arquímedes (3.1418)">
+    Archimedes sandwiched a circle between inscribed and circumscribed polygons of 96 sides each, proving that π lies between 3 + 10/71 and 3 + 1/7 — the first rigorous bounds in history.
+  </Accordion>
+  <Accordion title="480 d.C. — Zu Chongzhi (355/113)">
+    Chinese mathematician Zu Chongzhi calculated π correct to 7 decimal places and expressed it as the fraction 355/113 (≈ 3.1415929). This record stood for nearly 800 years.
+  </Accordion>
+  <Accordion title="1706 — William Jones (π)">
+    Welsh mathematician William Jones was the first to use the Greek letter π as a symbol for this constant in his work *Synopsis Palmariorum Matheseos*. Leonhard Euler popularised the notation in 1737.
+  </Accordion>
+  <Accordion title="Actualidad — Supercomputadoras (105 trillones de dígitos)">
+    As of the current record, supercomputers have calculated over 105 trillion digits of π, requiring petabytes of storage. The computation serves as a benchmark for hardware and algorithms rather than a mathematical necessity.
+  </Accordion>
+</AccordionGroup>
+
+## Layout
+
+On desktop (`md` breakpoint and above), entries alternate left and right of the center line. Even-indexed entries (0, 2, 4) are right-aligned with `flex-row-reverse`; odd-indexed entries (1, 3, 5) are left-aligned. Each content card takes up 45% of the container width.
+
+On mobile, all cards are stacked to the right of a left-edge line.
+
+Each card animates in individually:
+
+```tsx
+<motion.div
+  initial={{ opacity: 0, y: 50 }}
+  whileInView={{ opacity: 1, y: 0 }}
+  viewport={{ once: true, margin: "-100px" }}
+  transition={{ duration: 0.6, delay: i * 0.1 }}
+>
+```
+
+The stagger delay (`i * 0.1`) means the sixth card starts animating 500 ms after the first.

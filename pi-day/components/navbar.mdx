@@ -1,0 +1,234 @@
+---
+title: "Navbar component"
+description: "Fixed navigation bar with scroll-aware background, desktop links, and an animated mobile menu."
+---
+
+The `Navbar` component renders a fixed header that floats above all page content at `z-50`. It adapts its appearance based on scroll position and collapses into a hamburger menu on small screens.
+
+## Navigation links
+
+All six section anchors are defined in a `NAV_LINKS` constant at the top of the file:
+
+```tsx
+const NAV_LINKS = [
+  { name: "Inicio",     href: "#hero" },
+  { name: "¿Qué es π?", href: "#what-is-pi" },
+  { name: "Historia",   href: "#history" },
+  { name: "Desafío",    href: "#game" },
+  { name: "Galería",    href: "#gallery" },
+  { name: "Mundo Real", href: "#real-world" },
+];
+```
+
+Each entry maps a visible label to the `id` of the corresponding page section. Clicking any link calls `scrollTo`, which closes the mobile menu and smooth-scrolls the target into view.
+
+## Scroll-aware background
+
+A `useEffect` hook attaches a `scroll` listener that sets the `scrolled` boolean once the page has scrolled past 50 px. The `cn` utility (wrapping `clsx` + `tailwind-merge`) switches between two class sets:
+
+```tsx
+useEffect(() => {
+  const handleScroll = () => setScrolled(window.scrollY > 50);
+  window.addEventListener("scroll", handleScroll);
+  return () => window.removeEventListener("scroll", handleScroll);
+}, []);
+```
+
+| State | Classes applied |
+|---|---|
+| Not scrolled | `bg-transparent py-5` |
+| Scrolled | `bg-background/80 backdrop-blur-lg border-b border-white/5 py-3` |
+
+The background blur and semi-transparent fill (`bg-background/80`) give the header a glassmorphism look once content starts sliding beneath it. The vertical padding also tightens from `py-5` to `py-3` for a more compact bar on scroll.
+
+## Logo / brand mark
+
+The left side of the header shows the π glyph (with the `glow-text` class) and the text **"Día de Pi"** (hidden on very small screens). Clicking either element scrolls back to `#hero`:
+
+```tsx
+<div
+  className="font-display font-bold text-2xl tracking-tighter text-primary cursor-pointer flex items-center gap-2"
+  onClick={() => scrollTo("#hero")}
+>
+  <span className="text-3xl glow-text">π</span>
+  <span className="hidden sm:inline-block">Día de Pi</span>
+</div>
+```
+
+## Desktop navigation
+
+On screens `md` and wider, all six links are rendered as `<button>` elements inside a flex row. They use `uppercase tracking-wider text-sm` for a refined, minimal look and transition their color to `text-primary` on hover:
+
+```tsx
+<nav className="hidden md:flex items-center gap-8">
+  {NAV_LINKS.map((link) => (
+    <button
+      key={link.name}
+      onClick={() => scrollTo(link.href)}
+      className="text-muted-foreground hover:text-primary transition-colors text-sm font-medium uppercase tracking-wider"
+    >
+      {link.name}
+    </button>
+  ))}
+</nav>
+```
+
+## Mobile menu
+
+On screens smaller than `md`, the desktop nav is hidden and a toggle button using the `Menu` / `X` icons from `lucide-react` is shown instead. The dropdown is conditionally rendered with `AnimatePresence` so Framer Motion can animate its exit:
+
+```tsx
+<AnimatePresence>
+  {mobileMenuOpen && (
+    <motion.div
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="absolute top-full left-0 right-0 glass-panel border-t-0 p-4 flex flex-col gap-4 md:hidden"
+    >
+      {NAV_LINKS.map((link) => (
+        <button
+          key={link.name}
+          onClick={() => scrollTo(link.href)}
+          className="text-left text-lg font-medium text-foreground hover:text-primary p-2 rounded-lg hover:bg-white/5"
+        >
+          {link.name}
+        </button>
+      ))}
+    </motion.div>
+  )}
+</AnimatePresence>
+```
+
+The panel uses the `.glass-panel` utility class defined in `index.css`:
+
+```css
+.glass-panel {
+  @apply bg-card/60 backdrop-blur-md border border-white/10 shadow-xl shadow-black/50;
+}
+```
+
+<Note>
+  Clicking any link in the mobile menu calls `setMobileMenuOpen(false)` before scrolling, so the dropdown closes immediately as the page begins to scroll.
+</Note>
+
+## Usage in `Home.tsx`
+
+The `Navbar` is rendered once, directly inside the root page wrapper, above the `<main>` content block:
+
+```tsx
+import { Navbar } from "@/components/Navbar";
+
+export default function Home() {
+  return (
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary/30">
+      <Navbar />
+      <main>
+        <Hero />
+        {/* ... other sections ... */}
+      </main>
+    </div>
+  );
+}
+```
+
+Because the header is `position: fixed`, the `Hero` section adds `pt-20` to its inner container to prevent content from being obscured on initial load.
+
+## Full component source
+
+```tsx
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Menu, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const NAV_LINKS = [
+  { name: "Inicio",     href: "#hero" },
+  { name: "¿Qué es π?", href: "#what-is-pi" },
+  { name: "Historia",   href: "#history" },
+  { name: "Desafío",    href: "#game" },
+  { name: "Galería",    href: "#gallery" },
+  { name: "Mundo Real", href: "#real-world" },
+];
+
+export function Navbar() {
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 50);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollTo = (href: string) => {
+    setMobileMenuOpen(false);
+    const el = document.querySelector(href);
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  };
+
+  return (
+    <header
+      className={cn(
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
+        scrolled
+          ? "bg-background/80 backdrop-blur-lg border-b border-white/5 py-3"
+          : "bg-transparent py-5"
+      )}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+        <div
+          className="font-display font-bold text-2xl tracking-tighter text-primary cursor-pointer flex items-center gap-2"
+          onClick={() => scrollTo("#hero")}
+        >
+          <span className="text-3xl glow-text">π</span>
+          <span className="hidden sm:inline-block">Día de Pi</span>
+        </div>
+
+        {/* Desktop Nav */}
+        <nav className="hidden md:flex items-center gap-8">
+          {NAV_LINKS.map((link) => (
+            <button
+              key={link.name}
+              onClick={() => scrollTo(link.href)}
+              className="text-muted-foreground hover:text-primary transition-colors text-sm font-medium uppercase tracking-wider"
+            >
+              {link.name}
+            </button>
+          ))}
+        </nav>
+
+        {/* Mobile Menu Toggle */}
+        <button
+          className="md:hidden text-foreground p-2"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        >
+          {mobileMenuOpen ? <X /> : <Menu />}
+        </button>
+      </div>
+
+      {/* Mobile Nav */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute top-full left-0 right-0 glass-panel border-t-0 p-4 flex flex-col gap-4 md:hidden"
+          >
+            {NAV_LINKS.map((link) => (
+              <button
+                key={link.name}
+                onClick={() => scrollTo(link.href)}
+                className="text-left text-lg font-medium text-foreground hover:text-primary p-2 rounded-lg hover:bg-white/5"
+              >
+                {link.name}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </header>
+  );
+}
+```

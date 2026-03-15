@@ -1,0 +1,98 @@
+---
+title: "Adding database models"
+description: "Step-by-step guide to defining a new Drizzle ORM table, generating Zod insert schemas, and applying the migration."
+---
+
+Database models live in `lib/db/src/schema/`. Each model is a separate file that defines the Drizzle table, a Zod insert schema, and TypeScript types. The barrel file `schema/index.ts` re-exports everything for consumers.
+
+<Steps>
+  <Step title="Create a new schema file">
+    Create a file named after your model in `lib/db/src/schema/`. For example, to add a `posts` table:
+
+    ```bash
+    touch lib/db/src/schema/posts.ts
+    ```
+  </Step>
+
+  <Step title="Define the table with drizzle-orm/pg-core">
+    Use `pgTable` to declare the table and its columns:
+
+    ```typescript
+    // lib/db/src/schema/posts.ts
+    import { pgTable, text, serial } from "drizzle-orm/pg-core";
+    import { createInsertSchema } from "drizzle-zod";
+    import { z } from "zod/v4";
+
+    export const postsTable = pgTable("posts", {
+      id: serial("id").primaryKey(),
+      title: text("title").notNull(),
+    });
+    ```
+  </Step>
+
+  <Step title="Create the insert schema with drizzle-zod">
+    Use `createInsertSchema` to derive a Zod schema for validated inserts. Omit auto-generated fields like `id`:
+
+    ```typescript
+    // lib/db/src/schema/posts.ts (continued)
+    export const insertPostSchema = createInsertSchema(postsTable).omit({ id: true });
+    ```
+  </Step>
+
+  <Step title="Export TypeScript types">
+    Export `Insert*` and base types inferred from the schema and table:
+
+    ```typescript
+    // lib/db/src/schema/posts.ts (continued)
+    export type InsertPost = z.infer<typeof insertPostSchema>;
+    export type Post = typeof postsTable.$inferSelect;
+    ```
+
+    The complete file looks like this:
+
+    ```typescript
+    // lib/db/src/schema/posts.ts
+    import { pgTable, text, serial } from "drizzle-orm/pg-core";
+    import { createInsertSchema } from "drizzle-zod";
+    import { z } from "zod/v4";
+
+    export const postsTable = pgTable("posts", {
+      id: serial("id").primaryKey(),
+      title: text("title").notNull(),
+    });
+
+    export const insertPostSchema = createInsertSchema(postsTable).omit({ id: true });
+    export type InsertPost = z.infer<typeof insertPostSchema>;
+    export type Post = typeof postsTable.$inferSelect;
+    ```
+  </Step>
+
+  <Step title="Re-export from the barrel file">
+    Add an export to `lib/db/src/schema/index.ts` so the model is available to all consumers of `@workspace/db`:
+
+    ```typescript
+    // lib/db/src/schema/index.ts
+    export * from "./posts";
+    ```
+
+    The barrel file is the single entry point for schema access across the monorepo (e.g. in `@workspace/api-server` and `@workspace/scripts`).
+  </Step>
+
+  <Step title="Push the schema to the database">
+    Apply the new table definition to your PostgreSQL database using Drizzle Kit:
+
+    ```bash
+    pnpm --filter @workspace/db run push
+    ```
+
+    If Drizzle Kit prompts for confirmation on destructive changes and you need to skip the prompt (e.g. in CI), use:
+
+    ```bash
+    pnpm --filter @workspace/db run push-force
+    ```
+
+    <Note>
+      Both commands require the `DATABASE_URL` environment variable to be set. See [Prerequisites](/development/prerequisites) for details.
+    </Note>
+  </Step>
+</Steps>

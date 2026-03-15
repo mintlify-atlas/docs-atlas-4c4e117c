@@ -1,0 +1,257 @@
+---
+title: "Hero section"
+description: "Full-screen landing section featuring the giant π symbol, animated title, flowing digit ticker, and CTA buttons."
+---
+
+The `Hero` component is the first thing visitors see. It fills the entire viewport with an animated π symbol, a subtitle, two call-to-action buttons, and a continuously scrolling stream of Pi digits.
+
+## Layout and background
+
+The section uses `min-h-screen` to fill the full viewport and centers its content both horizontally and vertically. Behind the content, two layers create the space atmosphere:
+
+1. **Space background image** — `space-bg.png` is rendered at 40% opacity via `object-cover`, so it fills the container without distortion.
+2. **Gradient overlay** — a `bg-gradient-to-b` fades from `background/50` at the top, through `background/80` in the middle, to a fully opaque `background` at the bottom. This ensures the section blends cleanly into the content below it.
+
+```tsx
+<div className="absolute inset-0 z-0">
+  <img
+    src={`${import.meta.env.BASE_URL}images/space-bg.png`}
+    alt="Deep Space"
+    className="w-full h-full object-cover opacity-40"
+  />
+  <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-background/80 to-background" />
+</div>
+```
+
+## Giant π symbol
+
+The π character is rendered as an `<h1>` with a text size of `12rem` on mobile and `18rem` on wider screens. The text is transparent and uses `bg-clip-text` with a three-stop gradient (`from-primary via-secondary to-accent`) to produce the neon gradient fill. The `animate-pulse-glow` class drives a CSS keyframe animation defined in `index.css`:
+
+```css
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 15px hsl(var(--primary)/0.6)); }
+  50%       { opacity: 0.7; filter: drop-shadow(0 0 35px hsl(var(--primary)/0.9)); }
+}
+```
+
+A blurred `bg-primary/20` halo div is absolutely positioned behind the symbol to amplify the glow effect.
+
+### Framer Motion — scale-in entrance
+
+The π symbol animates in from half-size and invisible:
+
+```tsx
+<motion.div
+  initial={{ opacity: 0, scale: 0.5 }}
+  animate={{ opacity: 1, scale: 1 }}
+  transition={{ duration: 1, ease: "easeOut" }}
+>
+```
+
+## Title and subtitle
+
+Below the symbol, the heading **"El Infinito Misterio"** and a descriptive paragraph slide up from `y: 30` with a `0.5 s` delay:
+
+```tsx
+<motion.div
+  initial={{ opacity: 0, y: 30 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.8, delay: 0.5 }}
+>
+  <h2 className="text-4xl md:text-6xl font-bold mb-6 text-foreground glow-text">
+    El Infinito Misterio
+  </h2>
+  <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto mb-10 font-light">
+    Explora la historia, los misterios y los desafíos del número más famoso del universo.
+  </p>
+</motion.div>
+```
+
+The `glow-text` utility class (defined in `index.css`) adds a layered `text-shadow` using the primary color for the neon glow effect.
+
+## CTA buttons
+
+Two `NeonButton` components appear with a further staggered delay of `0.8 s`. Both use the `lg` size. The primary variant links to `#what-is-pi` and the secondary variant links to `#game`:
+
+```tsx
+<motion.div
+  initial={{ opacity: 0, y: 30 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.8, delay: 0.8 }}
+  className="flex flex-col sm:flex-row items-center justify-center gap-6"
+>
+  <NeonButton size="lg" onClick={() => scrollTo("#what-is-pi")}>
+    Explorar Pi
+  </NeonButton>
+  <NeonButton variant="secondary" size="lg" onClick={() => scrollTo("#game")}>
+    Jugar Desafío
+  </NeonButton>
+</motion.div>
+```
+
+### `scrollTo` utility
+
+Both buttons share a small inline helper that uses `scrollIntoView` with smooth behavior:
+
+```tsx
+const scrollTo = (href: string) => {
+  document.querySelector(href)?.scrollIntoView({ behavior: "smooth" });
+};
+```
+
+## Flowing digit ticker
+
+A `useEffect` interval fires every 100 ms and progressively reveals digits from `PI_DIGITS` (the first 1 000 digits of π, defined in `src/lib/constants.ts`). After 50 characters the counter resets to zero, creating a looping animation:
+
+```tsx
+const [displayedDigits, setDisplayedDigits] = useState("");
+
+useEffect(() => {
+  let i = 0;
+  const interval = setInterval(() => {
+    setDisplayedDigits((prev) => {
+      const next = PI_DIGITS.slice(0, i + 1);
+      i++;
+      if (i > 50) i = 0; // Reset for animation loop
+      return next;
+    });
+  }, 100);
+  return () => clearInterval(interval);
+}, []);
+```
+
+The ticker is displayed in a fixed-height `overflow-hidden` strip with `opacity-30` and the `mask-edges` utility to fade the text at both ends.
+
+## Scroll indicator
+
+A small mouse-icon widget is pinned to the bottom center of the section. Framer Motion animates it in a repeating vertical bounce:
+
+```tsx
+<motion.div
+  className="absolute bottom-8 left-1/2 -translate-x-1/2 text-muted-foreground"
+  animate={{ y: [0, 10, 0] }}
+  transition={{ duration: 2, repeat: Infinity }}
+>
+  <div className="w-6 h-10 border-2 border-muted-foreground/50 rounded-full flex justify-center p-1">
+    <div className="w-1 h-2 bg-primary rounded-full" />
+  </div>
+</motion.div>
+```
+
+## Animation summary
+
+<CardGroup cols={2}>
+  <Card title="π symbol" icon="circle">
+    Scales from 50% to 100% over 1 s with `easeOut`. Delay: none.
+  </Card>
+  <Card title="Title & subtitle" icon="text">
+    Slides up from `y: 30` over 0.8 s. Delay: 0.5 s.
+  </Card>
+  <Card title="CTA buttons" icon="cursor-arrow-rays">
+    Slides up from `y: 30` over 0.8 s. Delay: 0.8 s.
+  </Card>
+  <Card title="Scroll indicator" icon="arrow-down">
+    Bounces `y: 0 → 10 → 0` on a 2 s infinite loop.
+  </Card>
+</CardGroup>
+
+## Full component source
+
+```tsx
+import { motion } from "framer-motion";
+import { NeonButton } from "@/components/ui/NeonButton";
+import { useEffect, useState } from "react";
+import { PI_DIGITS } from "@/lib/constants";
+
+export function Hero() {
+  const [displayedDigits, setDisplayedDigits] = useState("");
+
+  useEffect(() => {
+    let i = 0;
+    const interval = setInterval(() => {
+      setDisplayedDigits((prev) => {
+        const next = PI_DIGITS.slice(0, i + 1);
+        i++;
+        if (i > 50) i = 0; // Reset for animation loop
+        return next;
+      });
+    }, 100);
+    return () => clearInterval(interval);
+  }, []);
+
+  const scrollTo = (href: string) => {
+    document.querySelector(href)?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  return (
+    <section id="hero" className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden">
+      {/* Background Image & Overlay */}
+      <div className="absolute inset-0 z-0">
+        <img
+          src={`${import.meta.env.BASE_URL}images/space-bg.png`}
+          alt="Deep Space"
+          className="w-full h-full object-cover opacity-40"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-background/80 to-background" />
+      </div>
+
+      <div className="relative z-10 max-w-5xl mx-auto px-4 text-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1, ease: "easeOut" }}
+          className="mb-6 relative inline-block"
+        >
+          <h1 className="text-[12rem] md:text-[18rem] leading-none font-display font-black text-transparent bg-clip-text bg-gradient-to-b from-primary via-secondary to-accent animate-pulse-glow select-none">
+            π
+          </h1>
+          <div className="absolute -inset-10 bg-primary/20 blur-[100px] -z-10 rounded-full" />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.5 }}
+        >
+          <h2 className="text-4xl md:text-6xl font-bold mb-6 text-foreground glow-text">
+            El Infinito Misterio
+          </h2>
+          <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto mb-10 font-light">
+            Explora la historia, los misterios y los desafíos del número más famoso del universo.
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.8 }}
+          className="flex flex-col sm:flex-row items-center justify-center gap-6"
+        >
+          <NeonButton size="lg" onClick={() => scrollTo("#what-is-pi")}>
+            Explorar Pi
+          </NeonButton>
+          <NeonButton variant="secondary" size="lg" onClick={() => scrollTo("#game")}>
+            Jugar Desafío
+          </NeonButton>
+        </motion.div>
+
+        {/* Flowing digits decoration */}
+        <div className="mt-16 overflow-hidden h-8 flex justify-center opacity-30 font-mono text-primary text-lg tracking-widest mask-edges">
+          {displayedDigits}
+        </div>
+      </div>
+
+      {/* Scroll indicator */}
+      <motion.div
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 text-muted-foreground"
+        animate={{ y: [0, 10, 0] }}
+        transition={{ duration: 2, repeat: Infinity }}
+      >
+        <div className="w-6 h-10 border-2 border-muted-foreground/50 rounded-full flex justify-center p-1">
+          <div className="w-1 h-2 bg-primary rounded-full" />
+        </div>
+      </motion.div>
+    </section>
+  );
+}
+```

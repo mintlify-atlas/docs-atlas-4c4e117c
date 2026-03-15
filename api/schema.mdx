@@ -1,0 +1,72 @@
+---
+title: "Database schema"
+description: "How to define tables, insert schemas, and TypeScript types using Drizzle ORM and drizzle-zod."
+---
+
+All database models live under `lib/db/src/schema/`. Each model is defined in its own file and re-exported from the barrel `src/schema/index.ts`.
+
+## Defining a model
+
+Each model file follows a three-part pattern:
+
+1. **`pgTable`** — declares the table and its columns.
+2. **`createInsertSchema`** — derives a Zod insert schema from the table (via `drizzle-zod`).
+3. **TypeScript types** — `InsertX` (from the Zod schema) and `X` (from Drizzle's `$inferSelect`).
+
+### Example
+
+The schema barrel includes a commented example that shows the full pattern:
+
+```typescript
+// lib/db/src/schema/posts.ts (example)
+import { pgTable, text, serial } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod/v4";
+
+export const postsTable = pgTable("posts", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+});
+
+export const insertPostSchema = createInsertSchema(postsTable).omit({ id: true });
+export type InsertPost = z.infer<typeof insertPostSchema>;
+export type Post = typeof postsTable.$inferSelect;
+```
+
+| Export | Purpose |
+|--------|---------|
+| `postsTable` | Drizzle table object used in queries |
+| `insertPostSchema` | Zod schema for validating `INSERT` payloads (no `id`, which is auto-generated) |
+| `InsertPost` | TypeScript type for the insert payload |
+| `Post` | TypeScript type for a fully selected row |
+
+## Barrel export
+
+`src/schema/index.ts` re-exports all model files. When you add a new model, add its export here:
+
+```typescript
+// lib/db/src/schema/index.ts
+export * from "./posts";
+// export * from "./users";
+// ... add one line per model file
+```
+
+The `db` client in `src/index.ts` imports `* as schema` from this barrel, so Drizzle has full schema awareness for relational queries.
+
+## Column types
+
+Common `drizzle-orm/pg-core` column helpers:
+
+| Helper | PostgreSQL type | Notes |
+|--------|----------------|-------|
+| `serial` | `SERIAL` | Auto-incrementing integer, good for primary keys |
+| `text` | `TEXT` | Unbounded string |
+| `varchar(n)` | `VARCHAR(n)` | Length-limited string |
+| `integer` | `INTEGER` | 32-bit integer |
+| `boolean` | `BOOLEAN` | True/false |
+| `timestamp` | `TIMESTAMP` | Date + time |
+| `uuid` | `UUID` | UUID column |
+
+<Tip>
+  Use `createInsertSchema(table).omit({ id: true })` for any table with a serial primary key. This strips the auto-generated `id` from the insert type so callers cannot (and do not need to) supply it.
+</Tip>

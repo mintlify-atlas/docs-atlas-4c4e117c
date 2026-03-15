@@ -1,0 +1,67 @@
+---
+title: "Pi Day app overview"
+description: "A single-page educational experience about π featuring interactive visualizations, a memory game, a data gallery, and an AI-style chatbot."
+---
+
+The Pi Day app is a pure frontend single-page application (SPA) built to celebrate March 14th (3/14). It takes visitors on an interactive journey through the mathematics, history, and cultural significance of π — no backend required for any core feature.
+
+The app runs entirely in the browser using React with Wouter for routing, Framer Motion for animations, and the Web Audio API for sound effects. State is managed locally within each component.
+
+## Aesthetic
+
+The app uses a dark futuristic design language with three signature neon colors:
+
+| Role | Color | Hex |
+|------|-------|-----|
+| Primary | Cyan | `#00D4FF` |
+| Secondary / Accent | Purple | `#B026FF` |
+| Danger / Highlight | Hot Pink | `#FF3366` |
+
+Glass-panel cards, glow shadows, a space background (`space-bg.png`), and a cyber grid texture (`grid-texture.png`) reinforce the aesthetic throughout.
+
+<Note>
+  The app is a pure frontend SPA. No backend API integration is required. All state is handled locally within components using React hooks.
+</Note>
+
+## Page structure
+
+The single route (`/`) renders `Home.tsx`, which stacks all sections in order:
+
+```tsx
+<main>
+  <Hero />
+  <WhatIsPi />
+  <History />
+  <MemoryGame />
+  <Visualizer />
+  <RealWorld />
+</main>
+<PiBot />
+```
+
+## Features
+
+<CardGroup cols={2}>
+  <Card title="What is Pi" icon="circle" href="/pi-day/what-is-pi">
+    Interactive circle visualizer with a draggable radius slider that derives π in real time. Includes three info cards on the irrational, transcendental, and universal nature of π.
+  </Card>
+  <Card title="Historical timeline" icon="clock" href="/pi-day/history-timeline">
+    Scroll-animated vertical timeline spanning from Babylonian approximations (2000 BC) to modern supercomputers calculating 105 trillion digits.
+  </Card>
+  <Card title="Pi memory game" icon="gamepad-2" href="/pi-day/memory-game">
+    Three game modes — Normal, Time Attack, and Sudden Death — challenge players to type the digits of π from memory with audio feedback and confetti rewards.
+  </Card>
+  <Card title="Data visualizer" icon="grid-2x2" href="/pi-day/data-visualizer">
+    The first 1,000 digits of π rendered as a color-coded grid (Matrix view) or arranged radially around a circle (Sphere view).
+  </Card>
+  <Card title="Real World" icon="globe" href="/pi-day/overview">
+    Examples of π appearing in GPS, construction, NASA space missions, Wi-Fi signal processing, and climate models.
+  </Card>
+  <Card title="PiBot chatbot" icon="bot" href="/pi-day/pibot">
+    A floating chatbot that answers four preset questions about π with typed responses and audio beeps. Runs entirely client-side with hardcoded responses.
+  </Card>
+</CardGroup>
+
+## Easter egg
+
+There is a hidden easter egg accessible by typing `3.14159` anywhere on the page. The `EasterEgg` component listens for this keystroke sequence globally via the `App.tsx` root.

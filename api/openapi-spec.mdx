@@ -1,0 +1,90 @@
+---
+title: "OpenAPI specification"
+description: "The OpenAPI 3.1 spec in lib/api-spec/openapi.yaml is the single source of truth for the API contract."
+---
+
+The canonical API description lives in `lib/api-spec/openapi.yaml`. It is an OpenAPI 3.1 document that defines every endpoint, request shape, and response schema. All generated code — Zod validators and React Query hooks — is derived from this file.
+
+## The spec
+
+```yaml
+# lib/api-spec/openapi.yaml
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+```
+
+## Spec structure
+
+| Section | Purpose |
+|---------|---------|
+| `info.title` | Used by Orval to name generated files — **must stay `"Api"`** |
+| `servers[0].url` | Sets the base URL baked into generated fetch calls (`/api`) |
+| `tags` | Groups operations for documentation and codegen |
+| `paths` | Declares each route, HTTP method, `operationId`, and response schemas |
+| `components/schemas` | Reusable JSON Schema definitions referenced via `$ref` |
+
+## Adding a new endpoint
+
+<Steps>
+  <Step title="Add the path to openapi.yaml">
+    Define a new entry under `paths`, give it a unique `operationId`, and reference or inline its response schema.
+  </Step>
+  <Step title="Add the schema to components/schemas">
+    If the response type is reusable, add it under `components/schemas` and reference it with `$ref`.
+  </Step>
+  <Step title="Run codegen">
+    ```bash
+    pnpm --filter @workspace/api-spec run codegen
+    ```
+    This regenerates the Zod schemas and React Query hooks. See [Code generation](/api/codegen) for details.
+  </Step>
+  <Step title="Implement the route">
+    Add a handler in `artifacts/api-server/src/routes/` and mount it in `src/routes/index.ts`.
+  </Step>
+</Steps>
+
+<Warning>
+  Do not change `info.title` from `"Api"`. Orval uses the title to name its output files (`api.ts`, `api.schemas.ts`). The workspace's barrel exports assume these filenames; renaming them will break all imports across `@workspace/api-zod` and `@workspace/api-client-react`.
+</Warning>
+
+## How the spec drives codegen
+
+Orval reads `openapi.yaml` and produces two independent outputs:
+
+- **`lib/api-zod/src/generated/`** — one Zod schema per `operationId` response, and TypeScript interfaces under `types/`.
+- **`lib/api-client-react/src/generated/`** — a typed `fetch` wrapper and React Query `useX` hooks, one per operation.
+
+See [Code generation](/api/codegen) for the full pipeline.

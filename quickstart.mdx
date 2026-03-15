@@ -1,80 +1,141 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Get the EduLearn-Hub Pi Day app and API server running locally in minutes."
 ---
 
-## Get started in three steps
+## Prerequisites
 
-Get your documentation site running locally and make your first customization.
+Before you begin, make sure you have the following installed:
 
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+- **Node.js 24** — required by the workspace toolchain
+- **pnpm** — the only supported package manager (`npm` and `yarn` are blocked by a preinstall guard)
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  The root `package.json` enforces pnpm. Running `npm install` or `yarn install` will exit with an error.
+</Note>
+
+---
+
+## Run the Pi Day frontend
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone <your-repo-url>
+    cd artifacts-monorepo
+    ```
+  </Step>
+
+  <Step title="Install all workspace dependencies">
+    Run this once from the repository root. pnpm installs every package in `artifacts/`, `lib/`, and `scripts/` in one pass.
+
+    ```bash
+    pnpm install
+    ```
+  </Step>
+
+  <Step title="Set required environment variables">
+    The Vite config reads `PORT` and `BASE_PATH` at startup and will throw if either is missing.
+
+    ```bash
+    export PORT=5173
+    export BASE_PATH=/
+    ```
+
+    <Tip>
+      You can also place these in a `.env` file at the repo root — Vite picks them up automatically during `dev`.
+    </Tip>
+  </Step>
+
+  <Step title="Start the Pi Day dev server">
+    ```bash
+    pnpm --filter @workspace/pi-day run dev
+    ```
+
+    Vite starts on `http://0.0.0.0:<PORT>`. Open `http://localhost:5173` (or whichever port you set) in your browser.
+  </Step>
+</Steps>
+
+---
+
+## Run the API server
+
+<Steps>
+  <Step title="Provision a PostgreSQL database">
+    The API server connects to PostgreSQL via `@workspace/db`. You need a running Postgres instance and its connection string.
+  </Step>
+
+  <Step title="Set the DATABASE_URL environment variable">
+    ```bash
+    export DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
+    ```
+
+    <Warning>
+      `DATABASE_URL` is required. Both `@workspace/db` (Drizzle client) and `@workspace/db`'s `drizzle.config.ts` will throw at startup if it is not set.
+    </Warning>
+  </Step>
+
+  <Step title="Push the database schema">
+    Apply the Drizzle schema to your database. In development, use the `push` command instead of migrations:
+
+    ```bash
+    pnpm --filter @workspace/db run push
+    ```
+
+    If you encounter constraint conflicts during iteration, use the force variant:
+
+    ```bash
+    pnpm --filter @workspace/db run push-force
+    ```
+  </Step>
+
+  <Step title="Start the API dev server">
+    ```bash
+    pnpm --filter @workspace/api-server run dev
+    ```
+
+    The server starts with `tsx` (no compile step) and listens on the port defined by the `PORT` environment variable. The health endpoint is available at `http://localhost:<PORT>/api/healthz`.
+  </Step>
+</Steps>
+
+---
+
+## Build for production
+
+To produce production artifacts for all packages that define a `build` script, run from the repo root:
+
+```bash
+pnpm run build
+```
+
+This runs `typecheck` first (TypeScript composite build across all project references), then recursively calls `build` in each package. The API server compiles to a single CJS bundle at `artifacts/api-server/dist/index.cjs`.
+
+<CodeGroup>
+
+```bash Build everything
+pnpm run build
+```
+
+```bash Typecheck only
+pnpm run typecheck
+```
+
+```bash Build API server only
+pnpm --filter @workspace/api-server run build
+```
+
+</CodeGroup>
+
+---
+
+## Regenerate API client code
+
+The React Query hooks and Zod schemas in `lib/api-client-react` and `lib/api-zod` are generated from the OpenAPI spec. After editing `lib/api-spec/openapi.yaml`, regenerate them:
+
+```bash
+pnpm --filter @workspace/api-spec run codegen
+```
+
+<Note>
+  The codegen output is written into `lib/api-client-react/src/generated/` and `lib/api-zod/src/generated/`. Commit the generated files alongside your spec changes.
 </Note>

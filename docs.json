@@ -1,122 +1,109 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "EduLearn-Hub Pi Day",
+  "theme": "palm",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#00D4FF",
+    "light": "#B026FF",
+    "dark": "#0A0A0F"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/Fercho12s/EduLearn-Hub"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/Fercho12s/EduLearn-Hub"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Overview",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart"]
+          },
+          {
+            "group": "Architecture",
+            "pages": ["architecture/monorepo", "architecture/stack"]
+          }
+        ]
+      },
+      {
+        "tab": "Pi Day App",
+        "groups": [
+          {
+            "group": "Features",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "pi-day/overview",
+              "pi-day/what-is-pi",
+              "pi-day/history-timeline",
+              "pi-day/memory-game",
+              "pi-day/data-visualizer",
+              "pi-day/pibot"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Components",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
-            ]
-          },
-          {
-            "group": "Writing content",
-            "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "pi-day/components/hero",
+              "pi-day/components/navbar",
+              "pi-day/components/easter-egg"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API & Backend",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "API Server",
             "pages": [
-              "api-reference/introduction"
+              "api/overview",
+              "api/health"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Database",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api/database",
+              "api/schema"
+            ]
+          },
+          {
+            "group": "Code Generation",
+            "pages": [
+              "api/openapi-spec",
+              "api/codegen"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Development",
+        "groups": [
+          {
+            "group": "Setup",
+            "pages": [
+              "development/prerequisites",
+              "development/local-setup",
+              "development/scripts"
+            ]
+          },
+          {
+            "group": "Contributing",
+            "pages": [
+              "development/typescript",
+              "development/adding-routes",
+              "development/adding-models"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

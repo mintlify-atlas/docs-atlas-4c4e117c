@@ -1,0 +1,211 @@
+---
+title: "Tech stack"
+description: "Every technology used in EduLearn-Hub Pi Day, why it was chosen, and how the pieces fit together."
+---
+
+## Quick overview
+
+| Layer | Technology | Version |
+|---|---|---|
+| Language | TypeScript | ~5.9 |
+| Runtime | Node.js | 24 |
+| Package manager | pnpm (workspaces) | — |
+| Frontend framework | React | 19.1.0 |
+| Frontend build | Vite | ^7 |
+| Styling | Tailwind CSS v4 | ^4.1 |
+| UI primitives | Radix UI | various |
+| Animation | Framer Motion | 12.35.1 |
+| Data fetching | TanStack Query (React Query) | ^5 |
+| Routing | Wouter | ^3 |
+| Backend framework | Express | 5 |
+| ORM | Drizzle ORM | ^0.45 |
+| Database | PostgreSQL | — |
+| Validation | Zod v4 | ^3.25 |
+| API spec | OpenAPI | 3.1 |
+| API codegen | Orval | ^8.5 |
+| Server bundler | esbuild | 0.27 |
+
+---
+
+## Frontend
+
+### React 19 + Vite 7
+
+`@workspace/pi-day` is a single-page application. React 19 is used for its concurrent features and improved server component groundwork; Vite 7 handles dev-server HMR and production bundling via Rollup.
+
+Vite is configured in `artifacts/pi-day/vite.config.ts` with:
+
+- **`@vitejs/plugin-react`** for JSX transform and Fast Refresh
+- **`@tailwindcss/vite`** for zero-config Tailwind CSS v4 integration
+- A path alias `@` → `src/` for clean imports
+
+Two environment variables are required by the Vite config at startup:
+
+```bash
+PORT=5173       # dev server port
+BASE_PATH=/     # Vite `base` option for asset URL prefix
+```
+
+### Tailwind CSS v4
+
+Tailwind v4 is integrated as a Vite plugin (`@tailwindcss/vite`) rather than a PostCSS plugin. This means there is no `tailwind.config.js` — all configuration lives in CSS files using the new `@theme` directive.
+
+### Radix UI
+
+The component library is built on [Radix UI](https://www.radix-ui.com/) primitives — fully accessible, unstyled headless components (accordion, dialog, dropdown, select, tabs, and many more). They are styled with Tailwind utility classes via the `class-variance-authority` + `clsx` + `tailwind-merge` pattern.
+
+### TanStack Query (React Query v5)
+
+All server state is managed by TanStack Query. The hooks are **not written by hand** — they are generated automatically from the OpenAPI spec by Orval (see the [Orval codegen pipeline](#orval-codegen-pipeline) section below). This means adding a new API endpoint automatically produces a ready-to-use hook in `@workspace/api-client-react`.
+
+### Wouter
+
+Client-side routing uses Wouter instead of React Router. Wouter is a minimal (~2 kB) hook-based router with an API surface similar to React Router v5.
+
+### Framer Motion
+
+Animations are handled by Framer Motion (pinned to `12.35.1` in the workspace catalog to avoid accidental major-version upgrades).
+
+---
+
+## Backend
+
+### Express 5
+
+`@workspace/api-server` is an Express 5 application. Express 5 brings native async error handling — `async` route handlers can throw and Express will forward the error to the error middleware without needing `try/catch` wrappers.
+
+The app structure is:
+
+```text
+artifacts/api-server/src/
+├── index.ts      # reads PORT, starts the HTTP server
+├── app.ts        # configures CORS, JSON parsing, mounts routes at /api
+└── routes/
+    ├── index.ts  # sub-router barrel
+    └── health.ts # GET /api/healthz
+```
+
+The server depends only on `@workspace/db` and `@workspace/api-zod` — no other workspace packages.
+
+### esbuild production bundle
+
+For production, the API server is compiled to a single CommonJS file (`dist/index.cjs`) by esbuild. The build script bundles an allowlist of runtime dependencies (express, cors, pg, drizzle-orm, zod, etc.) and externalizes everything else. This keeps the deployment artifact self-contained and fast to cold-start.
+
+```bash
+pnpm --filter @workspace/api-server run build
+```
+
+---
+
+## Database
+
+### PostgreSQL + Drizzle ORM
+
+`@workspace/db` is the database layer. It exports:
+
+- A `pg.Pool` connection pool
+- A `drizzle` client instance (bound to the pool)
+- All schema models from `src/schema/`
+
+The schema is defined with Drizzle's TypeScript DSL in `src/schema/<modelname>.ts`. Each model file also uses **`drizzle-zod`** to derive insert schemas automatically, ensuring that Zod validation and the database schema stay in sync without duplication.
+
+### Schema management
+
+In development, schemas are applied with Drizzle Kit's `push` command (no migration files):
+
+```bash
+pnpm --filter @workspace/db run push
+```
+
+`DATABASE_URL` must be set in the environment. The `drizzle.config.ts` will throw at import time if it is missing:
+
+```typescript
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL, ensure the database is provisioned");
+}
+```
+
+---
+
+## API and codegen
+
+### OpenAPI 3.1 spec
+
+The single source of truth for the API contract is `lib/api-spec/openapi.yaml`. It declares every path, parameter, request body, and response schema. The spec is currently at version `0.1.0` and defines:
+
+- `GET /api/healthz` — returns a `HealthStatus` object `{ status: string }`
+
+### Orval codegen pipeline
+
+[Orval](https://orval.dev) reads `openapi.yaml` and generates two output packages:
+
+```text
+lib/api-spec/openapi.yaml
+        │
+        ├──► lib/api-client-react/src/generated/
+        │        React Query hooks  (useHealthCheck, etc.)
+        │        Custom fetch client
+        │
+        └──► lib/api-zod/src/generated/
+                 Zod schemas  (HealthStatusSchema, etc.)
+                 TypeScript types
+```
+
+Run codegen after any spec change:
+
+```bash
+pnpm --filter @workspace/api-spec run codegen
+```
+
+The Orval config (`lib/api-spec/orval.config.ts`) produces two targets:
+
+| Target | Client | Output |
+|---|---|---|
+| `api-client-react` | `react-query` | React Query hooks + native `fetch` wrapper |
+| `zod` | `zod` | Zod v4 schemas + TypeScript types |
+
+Both targets use `mode: "split"` (one file per endpoint group) and `clean: true` (stale generated files are deleted on each run). Prettier is applied to all generated output.
+
+---
+
+## Tooling
+
+### TypeScript 5.9 with composite project references
+
+Every package extends `tsconfig.base.json`, which sets `composite: true`. The root `tsconfig.json` lists the `lib/` packages as project references.
+
+Key settings from `tsconfig.base.json`:
+
+| Option | Value | Effect |
+|---|---|---|
+| `composite` | `true` | Enables incremental builds and project references |
+| `moduleResolution` | `bundler` | Matches Vite and esbuild resolution (no `.js` extension required on imports) |
+| `module` | `esnext` | ESM output |
+| `target` | `es2022` | Modern JS features available |
+| `noImplicitAny` | `true` | All variables must be explicitly typed |
+| `strictNullChecks` | `true` | `null` and `undefined` are not assignable by default |
+
+**Always typecheck from the root:**
+
+```bash
+pnpm run typecheck
+```
+
+This runs `tsc --build --emitDeclarationOnly`, which respects the dependency graph defined by project references and builds packages in the correct order. Running `tsc` inside a single package will fail if its referenced packages have not been built yet.
+
+TypeScript only emits `.d.ts` declaration files — it does not produce JavaScript. JS output is the responsibility of each package's bundler (Vite for `pi-day`, esbuild for `api-server`, `tsx` for direct execution in `scripts` and the API dev server).
+
+### tsx
+
+The API dev server runs TypeScript directly using `tsx` (a Node.js loader that transpiles TypeScript on the fly):
+
+```bash
+pnpm --filter @workspace/api-server run dev
+# equivalent to: NODE_ENV=development tsx ./src/index.ts
+```
+
+`tsx` is also used to execute utility scripts in `@workspace/scripts` without a compile step.
+
+### Prettier
+
+Code formatting is handled by Prettier (`^3.8`), configured at the root. Generated files from Orval are also passed through Prettier to ensure consistent style.

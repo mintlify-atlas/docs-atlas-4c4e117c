@@ -1,0 +1,139 @@
+---
+title: "Adding API routes"
+description: "Step-by-step guide to adding a new endpoint to the Express API server, from OpenAPI spec to route registration."
+---
+
+Routes in `@workspace/api-server` are driven by the OpenAPI spec. Adding a new endpoint involves four steps: spec → codegen → route file → registration.
+
+<Steps>
+  <Step title="Add the path to openapi.yaml">
+    Open `lib/api-spec/openapi.yaml` and define your new path. Use the existing `/healthz` endpoint as a pattern:
+
+    ```yaml
+    # lib/api-spec/openapi.yaml
+    paths:
+      /healthz:
+        get:
+          operationId: healthCheck
+          tags: [health]
+          summary: Health check
+          responses:
+            "200":
+              description: Healthy
+              content:
+                application/json:
+                  schema:
+                    $ref: "#/components/schemas/HealthStatus"
+
+      # Add your new path below
+      /posts:
+        get:
+          operationId: listPosts
+          tags: [posts]
+          summary: List all posts
+          responses:
+            "200":
+              description: OK
+              content:
+                application/json:
+                  schema:
+                    $ref: "#/components/schemas/PostListResponse"
+
+    components:
+      schemas:
+        # Add any new schemas here
+        PostListResponse:
+          type: object
+          properties:
+            posts:
+              type: array
+              items:
+                type: object
+          required:
+            - posts
+    ```
+
+    <Note>
+      Do **not** change the `info.title` field (`Api`). Orval uses it to derive import paths; changing it will break the generated code.
+    </Note>
+  </Step>
+
+  <Step title="Run codegen">
+    Regenerate the Zod schemas (`@workspace/api-zod`) and React Query hooks (`@workspace/api-client-react`) from the updated spec:
+
+    ```bash
+    pnpm --filter @workspace/api-spec run codegen
+    ```
+
+    This writes generated files into:
+    - `lib/api-zod/src/generated/` — Zod schemas (e.g. `PostListResponse`)
+    - `lib/api-client-react/src/generated/` — React Query hooks (e.g. `useListPosts`)
+  </Step>
+
+  <Step title="Create the route file">
+    Create a new file in `artifacts/api-server/src/routes/`. Use `health.ts` as a reference:
+
+    ```typescript
+    // artifacts/api-server/src/routes/health.ts (reference)
+    import { Router, type IRouter } from "express";
+    import { HealthCheckResponse } from "@workspace/api-zod";
+
+    const router: IRouter = Router();
+
+    router.get("/healthz", (_req, res) => {
+      const data = HealthCheckResponse.parse({ status: "ok" });
+      res.json(data);
+    });
+
+    export default router;
+    ```
+
+    Following the same pattern, your new route file would look like:
+
+    ```typescript
+    // artifacts/api-server/src/routes/posts.ts
+    import { Router, type IRouter } from "express";
+    import { PostListResponse } from "@workspace/api-zod";
+    import { db } from "@workspace/db";
+
+    const router: IRouter = Router();
+
+    router.get("/posts", async (_req, res) => {
+      // Fetch from DB, then validate response shape with the generated Zod schema
+      const posts = await db.query.postsTable.findMany();
+      const data = PostListResponse.parse({ posts });
+      res.json(data);
+    });
+
+    export default router;
+    ```
+
+    Key conventions:
+    - Import the generated Zod schema from `@workspace/api-zod` and call `.parse()` on every response to enforce the contract.
+    - Keep one router per file; each file exports a single default `Router` instance.
+  </Step>
+
+  <Step title="Register the router in routes/index.ts">
+    Mount the new router in `artifacts/api-server/src/routes/index.ts`:
+
+    ```typescript
+    // artifacts/api-server/src/routes/index.ts
+    import { Router, type IRouter } from "express";
+    import healthRouter from "./health";
+    import postsRouter from "./posts"; // <-- import your new router
+
+    const router: IRouter = Router();
+
+    router.use(healthRouter);
+    router.use(postsRouter); // <-- mount it
+
+    export default router;
+    ```
+
+    All routes registered here are automatically served under the `/api` prefix (set up in `src/app.ts`).
+  </Step>
+</Steps>
+
+## Full path resolution
+
+The app mounts the root router at `/api` in `src/app.ts`. So a route registered as `/posts` in your router file is reachable at **`/api/posts`**.

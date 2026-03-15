@@ -1,0 +1,74 @@
+---
+title: "Scripts reference"
+description: "Every npm script available at the root and in each workspace package."
+---
+
+## Root scripts
+
+These are defined in the root `package.json` and run across the whole monorepo:
+
+| Command | Description |
+|---|---|
+| `pnpm run build` | Runs `typecheck` first, then calls `build` recursively in every package that defines it |
+| `pnpm run typecheck` | Runs `typecheck:libs` (project-reference build) then typechecks all artifacts and the scripts package |
+| `pnpm run typecheck:libs` | Runs `tsc --build` on the root `tsconfig.json` (covers `lib/*` packages only) |
+
+## Per-package scripts
+
+### `@workspace/api-server`
+
+| Command | Description |
+|---|---|
+| `pnpm --filter @workspace/api-server run dev` | Starts the Express server with `tsx` in development mode (`NODE_ENV=development`) |
+| `pnpm --filter @workspace/api-server run build` | Produces a production esbuild CJS bundle at `dist/index.cjs` |
+| `pnpm --filter @workspace/api-server run typecheck` | Type-checks the package without emitting files (`tsc --noEmit`) |
+
+### `@workspace/pi-day`
+
+| Command | Description |
+|---|---|
+| `pnpm --filter @workspace/pi-day run dev` | Starts the Vite dev server (requires `PORT` and `BASE_PATH` env vars) |
+| `pnpm --filter @workspace/pi-day run build` | Produces a production build into `artifacts/pi-day/dist/public/` |
+| `pnpm --filter @workspace/pi-day run serve` | Previews the production build with `vite preview` |
+| `pnpm --filter @workspace/pi-day run typecheck` | Type-checks the package without emitting files (`tsc --noEmit`) |
+
+### `@workspace/db`
+
+| Command | Description |
+|---|---|
+| `pnpm --filter @workspace/db run push` | Applies schema changes to the database with Drizzle Kit (requires `DATABASE_URL`) |
+| `pnpm --filter @workspace/db run push-force` | Same as `push` but passes `--force` to skip interactive confirmation prompts |
+
+### `@workspace/api-spec`
+
+| Command | Description |
+|---|---|
+| `pnpm --filter @workspace/api-spec run codegen` | Runs Orval against `openapi.yaml` to regenerate Zod schemas into `lib/api-zod` and React Query hooks into `lib/api-client-react` |
+
+### `@workspace/scripts`
+
+Each `.ts` file in `scripts/src/` has a corresponding npm script entry. Run individual scripts with:
+
+<CodeGroup>
+```bash Named script
+pnpm --filter @workspace/scripts run <script-name>
+```
+
+```bash Example: hello script
+pnpm --filter @workspace/scripts run hello
+```
+</CodeGroup>
+
+To add a new utility script, create a file in `scripts/src/` and add a corresponding entry in `scripts/package.json`:
+
+```json
+// scripts/package.json
+"scripts": {
+  "hello": "tsx ./src/hello.ts",
+  "my-script": "tsx ./src/my-script.ts"
+}
+```
+
+<Tip>
+  Scripts in `@workspace/scripts` can import any other workspace package. Add it as a dependency in `scripts/package.json` and run `pnpm install`.
+</Tip>

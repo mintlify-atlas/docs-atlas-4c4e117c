@@ -1,0 +1,65 @@
+---
+title: "Prerequisites"
+description: "Tools and environment variables required before working on EduLearn-Hub."
+---
+
+Before you can run or contribute to the EduLearn-Hub monorepo, make sure the following tools are installed and configured.
+
+<CardGroup cols={2}>
+  <Card title="Node.js 24+" icon="node-js">
+    The workspace requires Node.js version 24 or later. Check your version with `node --version`.
+  </Card>
+  <Card title="pnpm" icon="box">
+    pnpm is the **only** supported package manager. The `preinstall` script exits with an error if you run `npm install` or `yarn install`.
+  </Card>
+  <Card title="Git" icon="code-branch">
+    Required to clone the repository and manage branches.
+  </Card>
+  <Card title="DATABASE_URL" icon="database">
+    A PostgreSQL connection string is required by the API server and all `@workspace/db` operations.
+  </Card>
+</CardGroup>
+
+## Installing pnpm
+
+If you don't have pnpm installed, the quickest way is via the official standalone script:
+
+```bash
+npm install -g pnpm
+```
+
+Or using Corepack (bundled with Node.js 16.9+):
+
+```bash
+corepack enable
+corepack prepare pnpm@latest --activate
+```
+
+Verify the installation:
+
+```bash
+pnpm --version
+```
+
+## Why pnpm is enforced
+
+<Note>
+The root `package.json` contains a `preinstall` script that checks the value of `$npm_config_user_agent`. If you run `npm install` or `yarn install` instead of `pnpm install`, the script prints **"Use pnpm instead"** and exits with a non-zero code, blocking the install.
+</Note>
+
+```json
+// package.json (root)
+"preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'"
+```
+
+## Environment variables
+
+| Variable | Required by | Description |
+|---|---|---|
+| `DATABASE_URL` | `@workspace/db`, `@workspace/api-server` | PostgreSQL connection string used by Drizzle ORM and Drizzle Kit |
+
+Set it in your shell or a `.env` file before running any API server or database commands:
+
+```bash
+export DATABASE_URL="postgres://user:password@localhost:5432/edulearn"
+```

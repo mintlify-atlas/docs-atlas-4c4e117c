@@ -1,0 +1,90 @@
+---
+title: "Data visualizer"
+description: "The first 1,000 digits of π rendered as an interactive color-coded grid or as radially arranged dots in a circle, with per-digit hover tooltips and a color legend."
+---
+
+The **Data Gallery** section (`id="gallery"`) visualizes the first 1,000 digits of π as colored cells. Two views are available, toggled by a segmented control in the section header.
+
+## Digit color map
+
+Each digit 0–9 is assigned a unique neon color defined in `src/lib/constants.ts`:
+
+```typescript
+export const DIGIT_COLORS = {
+  '0': '#FF3366', // Hot Pink
+  '1': '#FF6633', // Orange-Pink
+  '2': '#FFCC00', // Yellow
+  '3': '#33FF66', // Lime Green
+  '4': '#00FFFF', // Cyan
+  '5': '#0099FF', // Bright Blue
+  '6': '#6633FF', // Purple
+  '7': '#CC33FF', // Violet
+  '8': '#FFFFFF', // White glow
+  '9': '#99FF33', // Neon Green
+};
+```
+
+A color legend is rendered below both views, showing a small glowing swatch next to each digit.
+
+## Views
+
+<Tabs>
+  <Tab title="Matriz (Grid)">
+    The 1,000 digits are laid out in a responsive CSS grid. Column count scales with breakpoint: 20 columns on mobile, 25 on small screens, 40 on medium, and 50 on large screens.
+
+    Each cell is a small square (`aspect-square`) colored by `DIGIT_COLORS`. Cells animate in with a staggered scale-from-zero effect:
+
+    ```tsx
+    <motion.div
+      initial={{ opacity: 0, scale: 0 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: (i % 100) * 0.01, duration: 0.2 }}
+      style={{ backgroundColor: DIGIT_COLORS[d] }}
+    >
+      {/* Tooltip on hover */}
+      <div className="absolute opacity-0 group-hover:opacity-100 bg-black text-white text-xs p-1 rounded -top-8 left-1/2 -translate-x-1/2">
+        #{i + 1}: {d}
+      </div>
+    </motion.div>
+    ```
+
+    Hovering over any cell reveals a tooltip showing its 1-based position in the sequence and its digit value, for example: `#42: 5`.
+  </Tab>
+  <Tab title="Esfera (Circle)">
+    The 1,000 digits are placed as small circular dots arranged radially around a central π glyph. Each dot's angle is calculated as:
+
+    ```tsx
+    const angle = (i / digitsToRender) * 360; // degrees
+    // Positioned at 50% radius using CSS transform
+    transform: `rotate(${angle}deg) translateY(-200px)`
+    ```
+
+    Each dot carries a `box-shadow` glow in its assigned digit color. The entire ring animates in from a −90° rotation over 1.5 seconds with an `easeOut` curve:
+
+    ```tsx
+    <motion.div
+      initial={{ opacity: 0, rotate: -90 }}
+      animate={{ opacity: 1, rotate: 0 }}
+      transition={{ duration: 1.5, ease: "easeOut" }}
+    >
+    ```
+
+    A faint, blurred `π` character at 6xl sits at the center of the ring.
+  </Tab>
+</Tabs>
+
+## Performance
+
+The 1,000-digit array is computed once with `useMemo` and shared between both views, avoiding recalculation on view toggle:
+
+```tsx
+const digitsToRender = 1000;
+
+const gridData = useMemo(() => {
+  return PI_DIGITS.slice(0, digitsToRender).split('');
+}, []);
+```
+
+<Note>
+  The stagger delay in the grid view is `(i % 100) * 0.01` seconds, capping the wave at 1 second regardless of total digit count. This prevents the animation from taking 10 seconds for 1,000 cells.
+</Note>

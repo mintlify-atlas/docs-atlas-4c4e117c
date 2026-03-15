@@ -1,0 +1,92 @@
+---
+title: "Local setup"
+description: "Clone the repository, install dependencies, and run the Pi Day frontend and API server locally."
+---
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/Fercho12s/EduLearn-Hub
+    cd EduLearn-Hub
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    Run `pnpm install` from the repository root. This installs dependencies for every workspace package in a single pass.
+
+    ```bash
+    pnpm install
+    ```
+
+    <Warning>
+      Do **not** use `npm install` or `yarn install`. The `preinstall` script blocks them. See [Prerequisites](/development/prerequisites) for details.
+    </Warning>
+  </Step>
+
+  <Step title="Set environment variables">
+    The API server and all database commands require `DATABASE_URL`. Export it before starting any server:
+
+    ```bash
+    export DATABASE_URL="postgres://user:password@localhost:5432/edulearn"
+    ```
+
+    The Pi Day Vite dev server also requires `PORT` and `BASE_PATH` environment variables (read by `vite.config.ts` at startup):
+
+    ```bash
+    export PORT=5173
+    export BASE_PATH=/
+    ```
+  </Step>
+
+  <Step title="Start the Pi Day frontend">
+    Open a terminal and run the Vite dev server for the Pi Day frontend:
+
+    ```bash
+    pnpm --filter @workspace/pi-day run dev
+    ```
+
+    Vite starts on the port specified by the `PORT` environment variable.
+  </Step>
+
+  <Step title="Start the API server (separate terminal)">
+    In a **second** terminal, start the Express API server:
+
+    ```bash
+    pnpm --filter @workspace/api-server run dev
+    ```
+
+    The server reads the `PORT` environment variable for its listening port and serves all routes under `/api`.
+  </Step>
+</Steps>
+
+## Other useful commands
+
+### Type-check the whole monorepo
+
+Always run the typecheck from the repository root so that cross-package project references are resolved correctly:
+
+```bash
+pnpm run typecheck
+```
+
+This runs `tsc --build --emitDeclarationOnly` across all packages in dependency order.
+
+### Build everything
+
+```bash
+pnpm run build
+```
+
+This first runs `typecheck`, then calls each package's `build` script recursively.
+
+### Run a specific package script
+
+Use `pnpm --filter <package-name> run <script>` to target a single package:
+
+```bash
+# Build only the API server
+pnpm --filter @workspace/api-server run build
+
+# Push database schema changes
+pnpm --filter @workspace/db run push
+```

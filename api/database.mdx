@@ -1,0 +1,105 @@
+---
+title: "Database"
+description: "PostgreSQL connection and Drizzle ORM setup in lib/db."
+---
+
+The `@workspace/db` package (`lib/db`) owns the database connection and schema. It exports a ready-to-use Drizzle client, the raw `pg` connection pool, and all schema types.
+
+## Client setup
+
+`src/index.ts` creates a `pg.Pool` from `DATABASE_URL`, wraps it with Drizzle, and re-exports everything from the schema:
+
+```typescript
+// lib/db/src/index.ts
+import { drizzle } from "drizzle-orm/node-postgres";
+import pg from "pg";
+import * as schema from "./schema";
+
+const { Pool } = pg;
+
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    "DATABASE_URL must be set. Did you forget to provision a database?",
+  );
+}
+
+export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const db = drizzle(pool, { schema });
+
+export * from "./schema";
+```
+
+## Exports
+
+| Export | Type | Description |
+|--------|------|-------------|
+| `db` | `DrizzleInstance` | Drizzle ORM client with full schema awareness |
+| `pool` | `pg.Pool` | Raw `node-postgres` connection pool |
+| schema types | TypeScript types | All table insert/select types (e.g. `Post`, `InsertPost`) |
+
+Two package entry points are available:
+
+```json
+"exports": {
+  ".": "./src/index.ts",
+  "./schema": "./src/schema/index.ts"
+}
+```
+
+Import the client via `@workspace/db` and schema types only via `@workspace/db/schema`.
+
+## DATABASE_URL
+
+<Warning>
+  The module throws at import time if `DATABASE_URL` is not set. Always provision a PostgreSQL database before starting the API server.
+</Warning>
+
+On Replit, `DATABASE_URL` is automatically injected as a secret when a PostgreSQL database is provisioned for the project. Locally, add it to your `.env` file or shell environment.
+
+## Drizzle Kit configuration
+
+```typescript
+// lib/db/drizzle.config.ts
+import { defineConfig } from "drizzle-kit";
+import path from "path";
+
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL, ensure the database is provisioned");
+}
+
+export default defineConfig({
+  schema: path.join(__dirname, "./src/schema/index.ts"),
+  dialect: "postgresql",
+  dbCredentials: {
+    url: process.env.DATABASE_URL,
+  },
+});
+```
+
+## Development workflow
+
+During development, use `drizzle-kit push` to synchronise the schema directly to the database without generating migration files:
+
+<Steps>
+  <Step title="Edit the schema">
+    Add or modify table definitions in `lib/db/src/schema/`.
+  </Step>
+  <Step title="Push the schema">
+    ```bash
+    pnpm --filter @workspace/db run push
+    ```
+    If Drizzle Kit asks for confirmation and you want to skip the prompt:
+    ```bash
+    pnpm --filter @workspace/db run push-force
+    ```
+  </Step>
+  <Step title="Restart the dev server">
+    The API server imports the schema at startup, so restart it to pick up type changes.
+  </Step>
+</Steps>
+
+## Production migrations
+
+<Note>
+  Production database migrations are handled automatically by Replit when the project is published. You do not need to run `drizzle-kit migrate` manually.
+</Note>

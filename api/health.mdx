@@ -1,0 +1,72 @@
+---
+title: "Health check endpoint"
+description: "GET /api/healthz returns the server's current health status."
+---
+
+The health check endpoint provides a simple liveness signal. It parses its response through the `HealthCheckResponse` Zod schema before sending, so a successful response is always schema-valid.
+
+## Endpoint
+
+```
+GET /api/healthz
+```
+
+## Request
+
+No path parameters, query parameters, or request body are required.
+
+## Response
+
+**Status `200 OK`**
+
+<ResponseField name="status" type="string" required>
+  Health status string. Always `"ok"` when the server is running.
+</ResponseField>
+
+### Example response
+
+```json
+{
+  "status": "ok"
+}
+```
+
+## Example request
+
+```bash
+curl http://localhost:$PORT/api/healthz
+```
+
+## Route implementation
+
+```typescript
+// artifacts/api-server/src/routes/health.ts
+import { Router, type IRouter } from "express";
+import { HealthCheckResponse } from "@workspace/api-zod";
+
+const router: IRouter = Router();
+
+router.get("/healthz", (_req, res) => {
+  const data = HealthCheckResponse.parse({ status: "ok" });
+  res.json(data);
+});
+
+export default router;
+```
+
+The handler calls `HealthCheckResponse.parse(...)` — the Zod schema generated from the OpenAPI spec — to validate the response shape before sending it. This ensures the runtime response always matches the declared contract.
+
+## Schema definition
+
+The `HealthStatus` schema is defined in the OpenAPI spec and compiled to Zod by Orval:
+
+```typescript
+// lib/api-zod/src/generated/api.ts (generated — do not edit)
+export const HealthCheckResponse = zod.object({
+  status: zod.string(),
+});
+```
+
+<Note>
+  `HealthCheckResponse` is the Zod validator exported from `@workspace/api-zod`. The TypeScript interface `HealthStatus` (with the same shape) is exported from `@workspace/api-client-react` for use on the frontend.
+</Note>
