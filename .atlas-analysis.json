@@ -1,0 +1,121 @@
+{
+  "projectType": "frontend",
+  "projectName": "EduLearn-Hub Pi Day",
+  "projectDescription": "An interactive educational React SPA celebrating Pi Day with visualizations, a memory game, historical timeline, and PiBot chatbot, backed by an Express API server and PostgreSQL database in a pnpm monorepo.",
+  "theme": "palm",
+  "primaryColor": "#00D4FF",
+  "lightColor": "#B026FF",
+  "darkColor": "#0A0A0F",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Overview",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart"]
+          },
+          {
+            "group": "Architecture",
+            "pages": ["architecture/monorepo", "architecture/stack"]
+          }
+        ]
+      },
+      {
+        "tab": "Pi Day App",
+        "groups": [
+          {
+            "group": "Features",
+            "pages": [
+              "pi-day/overview",
+              "pi-day/what-is-pi",
+              "pi-day/history-timeline",
+              "pi-day/memory-game",
+              "pi-day/data-visualizer",
+              "pi-day/pibot"
+            ]
+          },
+          {
+            "group": "Components",
+            "pages": [
+              "pi-day/components/hero",
+              "pi-day/components/navbar",
+              "pi-day/components/easter-egg"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API & Backend",
+        "groups": [
+          {
+            "group": "API Server",
+            "pages": [
+              "api/overview",
+              "api/health"
+            ]
+          },
+          {
+            "group": "Database",
+            "pages": [
+              "api/database",
+              "api/schema"
+            ]
+          },
+          {
+            "group": "Code Generation",
+            "pages": [
+              "api/openapi-spec",
+              "api/codegen"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Development",
+        "groups": [
+          {
+            "group": "Setup",
+            "pages": [
+              "development/prerequisites",
+              "development/local-setup",
+              "development/scripts"
+            ]
+          },
+          {
+            "group": "Contributing",
+            "pages": [
+              "development/typescript",
+              "development/adding-routes",
+              "development/adding-models"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Interactive Pi visualization with color-coded digit grid and sphere view",
+    "Pi memory game with Normal, Time Attack, and Sudden Death modes",
+    "Animated historical timeline from 2000 BC to modern supercomputers",
+    "PiBot chatbot with preset questions and hardcoded educational responses",
+    "Konami-style Easter egg triggered by typing '3.14159'",
+    "Express 5 REST API server with OpenAPI spec and Orval code generation",
+    "PostgreSQL database with Drizzle ORM and Zod validation",
+    "pnpm monorepo with TypeScript composite project references"
+  ],
+  "publicApiSurface": [
+    "GET /api/healthz — Health check endpoint returning HealthStatus",
+    "HealthCheckResponse (Zod schema from @workspace/api-zod)",
+    "useHealthCheck (React Query hook from @workspace/api-client-react)",
+    "healthCheck (fetch function from @workspace/api-client-react)",
+    "Hero component (artifacts/pi-day/src/components/sections/Hero.tsx)",
+    "WhatIsPi component (artifacts/pi-day/src/components/sections/WhatIsPi.tsx)",
+    "History component (artifacts/pi-day/src/components/sections/History.tsx)",
+    "MemoryGame component (artifacts/pi-day/src/components/sections/MemoryGame.tsx)",
+    "Visualizer component (artifacts/pi-day/src/components/sections/Visualizer.tsx)",
+    "RealWorld component (artifacts/pi-day/src/components/sections/RealWorld.tsx)",
+    "PiBot component (artifacts/pi-day/src/components/PiBot.tsx)",
+    "EasterEgg component (artifacts/pi-day/src/components/EasterEgg.tsx)"
+  ]
+}
